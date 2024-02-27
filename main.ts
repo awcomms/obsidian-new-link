@@ -28,10 +28,10 @@ export default class NewLink extends Plugin {
 		const { vault } = this.app;
 
 		const new_link = async (editor: Editor, open?: boolean) => {
-			const last_line_number = editor.lastLine();
-			const last_line_content = editor.getLine(last_line_number);
-			const file = await vault.create(`${last_line_content}.md`, "");
-			editor.setLine(last_line_number, `[[${last_line_content}]]`);
+			const line = editor.getCursor().line;
+			const content = editor.getLine(line);
+			const file = await vault.create(`${content}.md`, "");
+			editor.setLine(line, `[[${content}]]`);
 			// this.app.fileManager.generateMarkdownLink(file, this.app.workspace.getActiveFile())
 			if (open) {
 				this.app.workspace.getLeaf(true).openFile(file);
