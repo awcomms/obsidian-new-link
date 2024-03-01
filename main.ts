@@ -7,6 +7,8 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	TFile,
+	getLinkpath,
 } from "obsidian";
 
 // Remember to rename these classes and interfaces!
@@ -28,21 +30,74 @@ export default class NewLink extends Plugin {
 		const { vault } = this.app;
 
 		const new_link = async (editor: Editor, open?: boolean) => {
-			const line = editor.getCursor().line;
-			const content = editor.getLine(line);
-			const file = await vault.create(`${content}.md`, "");
-			editor.setLine(line, `[[${content}]]`);
+			let content = editor.getSelection();
+			if (content) {
+				editor.replaceSelection(`[[${content}]]`);
+			} else {
+				const line = editor.getCursor().line;
+				content = editor.getLine(line);
+				editor.setLine(line, `[[${content}]]`);
+			}
 			// this.app.fileManager.generateMarkdownLink(file, this.app.workspace.getActiveFile())
+			const file =
+				// vault.getFileByPath(content.trim()) ||
+				await vault.create(`${content}.md`, "");
 			if (open) {
 				this.app.workspace.getLeaf(true).openFile(file);
 			}
 		};
+
+		const move_line = async (editor: Editor, direction: boolean) => {
+			const line = editor.getCursor().line;
+			const other_line = direction ? line + 1 : line - 1;
+			const content = editor.getLine(line);
+			const other_content = editor.getLine(other_line)
+			editor.setLine(other_line, content)
+			editor.setLine(line, other_content)
+		};
+
+		const open_current_link = async (editor: Editor, open?: boolean) => {
+			const line = editor.getCursor().line;
+			const content = editor.getLine(line);
+			const matches = /\[\[(.*?)\]\]/g.exec(content);
+			if (!matches) return;
+			const link_text = matches[1];
+			const path = getLinkpath(content);
+			let file = vault.getFileByPath(path);
+			console.debug(path, file);
+			if (!file) file = await vault.create(`${link_text}.md`, "");
+			this.app.workspace.getLeaf(true).openFile(file);
+		};
+
+		this.addCommand({
+			id: "move-line-up",
+			name: "Move line up",
+			editorCallback(editor) {
+				move_line(editor, true);
+			},
+		});
+
+		this.addCommand({
+			id: "move-line-up",
+			name: "Move line up",
+			editorCallback(editor) {
+				move_line(editor, false);
+			},
+		});
 
 		this.addCommand({
 			id: "create-link",
 			name: "Create link",
 			editorCallback(editor, ctx) {
 				new_link(editor);
+			},
+		});
+
+		this.addCommand({
+			id: "open-current-link",
+			name: "Open current link",
+			async editorCallback(editor, ctx) {
+				await open_current_link(editor);
 			},
 		});
 
